@@ -1,0 +1,62 @@
+- name: Configure Elk VM with Docker
+  hosts: elk
+  remote_user: azadmin
+  become: true
+  tasks:
+  - name: docker.io
+    apt:
+      force_apt_get: yes
+      update_cache: yes
+      name: docker.io
+      state: present
+  - name: Increase virtual memory
+    command: sysctl -w vm.max_map_count=262144
+  - name: Install pip3
+    apt:
+      force_apt_get: yes
+      name: python3-pip
+      state: present
+  - name: Install Docker python module
+    pip:
+       name: docker
+       state: present
+  - name: Use more memory
+    sysctl:
+      name: vm.max_map_count
+      value: "262144"
+      state: present
+      reload: yes
+  - name: download and launch docker elk container
+    docker_container:
+      name: elk
+      image: sebp/elk:761
+      state: started
+      restart_policy: always
+      published_ports:
+            - "5601:5601"
+            - "9200:9200"
+            - "5044:5044"
+  - name: Enable docker service
+    systemd:
+      name: docker
+      enabled: yes
+9:46
+---
+- name: installing and launching filebeat
+  hosts: webservers
+  become: yes
+  tasks:
+  - name: download filebeat deb
+    command: curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.6.1-amd64.deb
+  - name: install filebeat deb
+    command: sudo dpkg -i filebeat-7.6.1-amd64.deb
+  - name: drop in filebeat.yml
+    copy:
+      src: /etc/ansible/files/filebeat-config.yml
+      dest: /etc/filebeat/filebeat.yml
+  - name: enable and configure system module
+    command: sudo filebeat modules enable system
+  - name: setup filebeat
+    command: sudo filebeat setup
+  - name: start filebeat service
+    command: sudo service filebeat start
